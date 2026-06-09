@@ -29,7 +29,8 @@ Die App läuft vollständig lokal im Browser:
   - `lighting-color`
   - Inline-Styles wie `style="fill:#ff0000; stroke:#000000"`
 - Normalisierung von Farben, z. B. `#fff` zu `#FFFFFF`, `rgb(255, 0, 0)` zu `#FF0000` und bekannte Farbnamen zu Hex-Werten
-- Sonderwerte wie `none`, `transparent` und `currentColor` werden nicht automatisch dynamisiert
+- `currentColor` in Paint-Attributen wird über die nächste SVG/CSS-`color`-Angabe aufgelöst; ohne explizite `color`-Angabe wird Schwarz (`#000000`) als dynamisierbare Default-Farbe verwendet
+- Sonderwerte wie `none`, `transparent`, `inherit`, `initial` und `unset` werden nicht automatisch dynamisiert
 - pro Farbe auswählbar:
   - statisch lassen
   - dynamisieren
@@ -88,14 +89,14 @@ Der Export erzeugt eine Siemens-HMI-SVG-Grundstruktur mit:
 - Siemens DOCTYPE für TIA-HMI SVG
 - `xmlns:hmi="http://svg.siemens.com/hmi/"`
 - `xmlns:hmi-bind="http://svg.siemens.com/hmi/bind/"`
-- `hmi:self`
+- `hmi:self` mit `type`, `displayName`, `name`, `version` und `performanceClass`, damit TIA Portal einen gültigen SVG-Namen analysieren kann
 - je dynamischer Farbe ein `hmi:paramDef` mit `type="HmiColor"`
 - `hmi-bind:*`-Attributen für dynamisierte SVG-Farben
 
 Beispielprinzip:
 
 ```xml
-<hmi:self>
+<hmi:self type="widget" displayName="Example" name="extended.Example" version="1.0.0" performanceClass="L">
   <hmi:paramDef name="BodyColor" type="HmiColor" default="0xFF009999" />
 </hmi:self>
 <rect hmi-bind:fill="{{Converter.RGBA(ParamProps.BodyColor)}}" />
@@ -122,6 +123,7 @@ Die Vorschau verwendet bereinigte SVG-Daten als Blob-URL. Skripte aus dem import
 ## Einschränkungen
 
 - Die App ist ein Generator und ersetzt keine finale Validierung im TIA Portal.
+- Icons aus Libraries wie Tabler, die häufig `stroke="currentColor"` am `<svg>` verwenden, werden als dynamisierbare Stroke-Farbe erkannt.
 - Nicht jedes SVG-Feature wird von jeder WinCC Unified Runtime identisch unterstützt.
 - Komplexe CSS-Kaskaden aus entfernten `<style>`-Blöcken werden nicht vollständig aufgelöst.
 - Farbwerte in komplexen Verläufen werden erkannt, sofern sie in unterstützten Farbattributen stehen.

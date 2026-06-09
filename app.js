@@ -6,6 +6,7 @@
   const HMI_BIND_NS = 'http://svg.siemens.com/hmi/bind/';
   const HMI_DOCTYPE = '<!DOCTYPE svg PUBLIC "-//SIEMENS//DTD SVG 1.0 TIA-HMI//EN" "https://tia.siemens.com/graphics/svg/1.0/dtd/svg-hmi.dtd">';
   const COLOR_ATTRIBUTES = ['fill', 'stroke', 'stop-color', 'flood-color', 'lighting-color'];
+  const CURRENT_COLOR_FALLBACK = '#000000';
   const ANIMATION_TAGS = ['animate', 'animateTransform', 'animateMotion', 'set'];
   const PROPERTY_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
   const SVG_MIME_TYPE = 'image/svg+xml;charset=utf-8';
@@ -128,6 +129,7 @@
     for (const tag of ANIMATION_TAGS) addCountWarning(warnings, doc.getElementsByTagName(tag).length, 'SVG-Animation entfernt', `<${tag}> wird entfernt, da dynamische Siemens-Bindings über HMI-Properties erfolgen sollen.`, 'warning');
     addCountWarning(warnings, doc.querySelectorAll('style').length, 'Style-Block entfernt', '<style>-Blöcke werden entfernt. Inline-Paint-Styles werden soweit möglich in Attribute überführt.', 'warning');
     addCountWarning(warnings, doc.querySelectorAll('[style]').length, 'Inline-Styles gefunden', 'Paint-Eigenschaften aus style="..." werden ausgewertet; andere Style-Deklarationen bleiben nur nach Bereinigung erhalten.', 'warning');
+    addCountWarning(warnings, countCurrentColorPaints(doc), 'currentColor erkannt', `currentColor-Paint-Werte werden über die SVG/CSS-Farbe aufgelöst und ohne explizite color-Angabe als ${CURRENT_COLOR_FALLBACK} dynamisierbar gemacht.`, 'warning');
     if (!doc.documentElement.getAttribute('viewBox')) warnings.push({ title: 'viewBox fehlt', message: 'WinCC Unified profitiert von einem stabilen viewBox. Breite/Höhe bleiben erhalten, aber Skalierung kann eingeschränkt sein.', level: 'warning' });
 
     let eventHandlers = 0;
@@ -198,7 +200,7 @@
       for (const attr of COLOR_ATTRIBUTES) {
         if (!el.hasAttribute(attr)) continue;
         const raw = el.getAttribute(attr).trim();
-        const normalized = normalizeColor(raw);
+        const normalized = resolvePaintColor(raw, el);
         if (!normalized || normalized.special) continue;
         if (!colors.has(normalized.hex)) colors.set(normalized.hex, { hex: normalized.hex, count: 0, attributes: new Set(), rawValues: new Set() });
         const entry = colors.get(normalized.hex);
@@ -234,7 +236,7 @@
   function renderColorList() {
     if (!state.colors.size) {
       els.colorList.className = 'color-list empty';
-      els.colorList.textContent = 'Keine dynamisierbaren Farben gefunden. Sonderwerte wie none, transparent und currentColor werden bewusst nicht dynamisiert.';
+      els.colorList.textContent = 'Keine dynamisierbaren Farben gefunden. Sonderwerte wie none, transparent, inherit, initial und unset werden bewusst nicht dynamisiert.';
       return;
     }
     els.colorList.className = 'color-list';
@@ -334,6 +336,7 @@
 
     svg.querySelector('hmi\\:self')?.remove();
     const self = doc.createElementNS(HMI_NS, 'hmi:self');
+    setHmiSelfAttributes(self, buildSvgName(svg.getAttribute('name')));
     for (const config of configs) {
       const param = doc.createElementNS(HMI_NS, 'hmi:paramDef');
       param.setAttribute('name', config.propertyName);
@@ -347,7 +350,7 @@
       if (el.namespaceURI === HMI_NS) continue;
       for (const attr of COLOR_ATTRIBUTES) {
         if (!el.hasAttribute(attr)) continue;
-        const normalized = normalizeColor(el.getAttribute(attr));
+        const normalized = resolvePaintColor(el.getAttribute(attr), el);
         const config = normalized ? configs.find((item) => item.hex === normalized.hex) : null;
         if (config) {
           el.removeAttribute(attr);
@@ -364,7 +367,7 @@
       for (const el of doc.querySelectorAll('*')) {
         for (const attr of COLOR_ATTRIBUTES) {
           if (!el.hasAttribute(attr)) continue;
-          const normalized = normalizeColor(el.getAttribute(attr));
+          const normalized = resolvePaintColor(el.getAttribute(attr), el);
           const config = normalized ? configs.find((item) => item.hex === normalized.hex) : null;
           if (config) el.setAttribute(attr, state.testValues.get(config.propertyName) || config.defaultColor);
         }
@@ -395,6 +398,39 @@
       if (container.dataset.url) URL.revokeObjectURL(container.dataset.url);
       delete container.dataset.url;
     });
+  }
+
+  function resolvePaintColor(value, el) {
+    const normalized = normalizeColor(value);
+    if (!normalized?.special || normalized.value !== 'currentcolor') return normalized;
+    return resolveCurrentColor(el) || { hex: CURRENT_COLOR_FALLBACK };
+  }
+
+  function resolveCurrentColor(el) {
+    for (let current = el; current; current = current.parentElement) {
+      const colorValue = getElementColorValue(current);
+      if (!colorValue) continue;
+      const normalized = normalizeColor(colorValue);
+      if (normalized?.hex) return normalized;
+    }
+    return null;
+  }
+
+  function getElementColorValue(el) {
+    const styleColor = parseStyle(el.getAttribute('style')).find(([name]) => name === 'color')?.[1];
+    return styleColor || el.getAttribute('color');
+  }
+
+  function countCurrentColorPaints(doc) {
+    let count = 0;
+    for (const el of doc.querySelectorAll('*')) {
+      for (const attr of COLOR_ATTRIBUTES) {
+        if (el.getAttribute(attr)?.trim().toLowerCase() === 'currentcolor') count += 1;
+      }
+      const stylePaints = parseStyle(el.getAttribute('style')).filter(([name, value]) => COLOR_ATTRIBUTES.includes(name) && value.trim().toLowerCase() === 'currentcolor');
+      count += stylePaints.length;
+    }
+    return count;
   }
 
   function normalizeColor(value) {
@@ -451,6 +487,19 @@
   function hexToHmiColor(hex) { return `0xFF${hex.replace('#', '').toUpperCase()}`; }
   function formatBytes(bytes) { return `${(bytes / 1024).toFixed(bytes > 1024 * 1024 ? 1 : 0)} KB`; }
   function buildExportFileName() { return `${baseFileName()}_dynamic.svghmi`; }
+  function setHmiSelfAttributes(self, svgName) {
+    self.setAttribute('type', 'widget');
+    self.setAttribute('displayName', svgName);
+    self.setAttribute('name', `extended.${svgName}`);
+    self.setAttribute('version', '1.0.0');
+    self.setAttribute('performanceClass', 'L');
+  }
+  function buildSvgName(existingName) { return sanitizeSvgName(String(existingName || '').trim() || baseFileName()); }
+  function sanitizeSvgName(value) {
+    const cleaned = String(value || '').replace(/\.svg$/i, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!cleaned) return 'SvgGraphic';
+    return /^[A-Za-z_]/.test(cleaned) ? cleaned : `Svg_${cleaned}`;
+  }
   function buildCleanFileName() { return `${baseFileName()}_clean.svg`; }
   function baseFileName() { return (state.fileName || 'export.svg').replace(/\.svg$/i, '').replace(/[^A-Za-z0-9_-]+/g, '_'); }
 
