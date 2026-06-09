@@ -6,6 +6,11 @@ Eine reine Frontend-Webanwendung zum Umwandeln normaler SVG-Dateien in Siemens W
 
 Die Anwendung unterstützt den typischen Engineering-Workflow, bei dem ein bestehendes Standard-SVG als grafisches Element genutzt, einzelne Farben als HMI-Properties dynamisiert und anschließend als Siemens-kompatible Dynamic-SVG-Datei exportiert werden sollen.
 
+Projektlinks:
+
+- Repository: https://github.com/Spawnsen/SVG-to-Siemens-Dynamic-SVG-Generator
+- Support: https://www.buymeacoffee.com/spawnsen
+
 Die App läuft vollständig lokal im Browser:
 
 - kein Backend
