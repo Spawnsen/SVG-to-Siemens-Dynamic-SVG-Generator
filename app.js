@@ -333,6 +333,7 @@
     ensureSvgNamespaces(svg);
     svg.setAttribute('xmlns:hmi', HMI_NS);
     svg.setAttribute('xmlns:hmi-bind', HMI_BIND_NS);
+    svg.setAttribute('name', buildSvgName(svg.getAttribute('name')));
 
     svg.querySelector('hmi\\:self')?.remove();
     const self = doc.createElementNS(HMI_NS, 'hmi:self');
