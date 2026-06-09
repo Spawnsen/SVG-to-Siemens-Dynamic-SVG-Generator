@@ -333,6 +333,7 @@
     ensureSvgNamespaces(svg);
     svg.setAttribute('xmlns:hmi', HMI_NS);
     svg.setAttribute('xmlns:hmi-bind', HMI_BIND_NS);
+    svg.setAttribute('name', buildSvgName(svg.getAttribute('name')));
 
     svg.querySelector('hmi\\:self')?.remove();
     const self = doc.createElementNS(HMI_NS, 'hmi:self');
@@ -486,6 +487,12 @@
   function hexToHmiColor(hex) { return `0xFF${hex.replace('#', '').toUpperCase()}`; }
   function formatBytes(bytes) { return `${(bytes / 1024).toFixed(bytes > 1024 * 1024 ? 1 : 0)} KB`; }
   function buildExportFileName() { return `${baseFileName()}_dynamic.svghmi`; }
+  function buildSvgName(existingName) { return sanitizeSvgName(String(existingName || '').trim() || baseFileName()); }
+  function sanitizeSvgName(value) {
+    const cleaned = String(value || '').replace(/\.svg$/i, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!cleaned) return 'SvgGraphic';
+    return /^[A-Za-z_]/.test(cleaned) ? cleaned : `Svg_${cleaned}`;
+  }
   function buildCleanFileName() { return `${baseFileName()}_clean.svg`; }
   function baseFileName() { return (state.fileName || 'export.svg').replace(/\.svg$/i, '').replace(/[^A-Za-z0-9_-]+/g, '_'); }
 
