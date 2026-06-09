@@ -91,7 +91,7 @@ Der Export erzeugt eine Siemens-HMI-SVG-Grundstruktur mit:
 - `xmlns:hmi-bind="http://svg.siemens.com/hmi/bind/"`
 - `hmi:self` mit `type`, `displayName`, `name`, `version` und `performanceClass`, damit TIA Portal einen gültigen SVG-Namen analysieren kann
 - je dynamischer Farbe ein `hmi:paramDef` mit `type="HmiColor"`
-- `hmi-bind:*`-Attributen für dynamisierte SVG-Farben
+- `hmi-bind:*`-Attributen für dynamisierte SVG-Farben; geerbte Farben von `<svg>` oder `<g>` werden beim Export auf die eigentlichen Grafikelemente wie `<path>` übertragen
 
 Beispielprinzip:
 

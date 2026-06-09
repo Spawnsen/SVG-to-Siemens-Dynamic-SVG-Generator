@@ -6,6 +6,7 @@
   const HMI_BIND_NS = 'http://svg.siemens.com/hmi/bind/';
   const HMI_DOCTYPE = '<!DOCTYPE svg PUBLIC "-//SIEMENS//DTD SVG 1.0 TIA-HMI//EN" "https://tia.siemens.com/graphics/svg/1.0/dtd/svg-hmi.dtd">';
   const COLOR_ATTRIBUTES = ['fill', 'stroke', 'stop-color', 'flood-color', 'lighting-color'];
+  const PAINTABLE_TAGS = new Set(['path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'text', 'tspan', 'textPath', 'use', 'stop', 'feFlood', 'feDiffuseLighting', 'feSpecularLighting']);
   const CURRENT_COLOR_FALLBACK = '#000000';
   const ANIMATION_TAGS = ['animate', 'animateTransform', 'animateMotion', 'set'];
   const PROPERTY_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -268,7 +269,7 @@
       if (target.dataset.action === 'name') config.propertyName = target.value.trim();
       if (target.dataset.action === 'default') config.defaultColor = target.value.toUpperCase();
       state.testValues.set(config.propertyName, config.defaultColor);
-      renderColorList();
+      if (target.dataset.action === 'toggle') renderColorList();
       refreshAll();
     }
   }
@@ -347,19 +348,48 @@
     }
     svg.insertBefore(self, svg.firstElementChild || svg.firstChild);
 
-    for (const el of svg.querySelectorAll('*')) {
-      if (el.namespaceURI === HMI_NS) continue;
-      for (const attr of COLOR_ATTRIBUTES) {
-        if (!el.hasAttribute(attr)) continue;
-        const normalized = resolvePaintColor(el.getAttribute(attr), el);
-        const config = normalized ? configs.find((item) => item.hex === normalized.hex) : null;
-        if (config) {
-          el.removeAttribute(attr);
-          el.setAttributeNS(HMI_BIND_NS, `hmi-bind:${attr}`, `{{Converter.RGBA(ParamProps.${config.propertyName})}}`);
-        }
-      }
-    }
+    applyDynamicPaintBindings(svg, configs);
     return `${HMI_DOCTYPE}\n${serializeSvg(doc)}\n`;
+  }
+
+  function applyDynamicPaintBindings(svg, configs) {
+    for (const attr of COLOR_ATTRIBUTES) {
+      applyDynamicPaintBinding(svg, attr, null, configs);
+    }
+  }
+
+  function applyDynamicPaintBinding(el, attr, inheritedConfig, configs) {
+    if (el.namespaceURI === HMI_NS) return;
+
+    const ownConfig = getDynamicPaintConfig(el, attr, configs);
+    const blocksInheritance = el.hasAttribute(attr) && !ownConfig;
+    const effectiveConfig = ownConfig || (blocksInheritance ? null : inheritedConfig);
+
+    if (ownConfig && !isPaintableForAttribute(el, attr)) el.removeAttribute(attr);
+    if (effectiveConfig && isPaintableForAttribute(el, attr)) bindPaintAttribute(el, attr, effectiveConfig);
+
+    for (const child of el.children) {
+      applyDynamicPaintBinding(child, attr, effectiveConfig, configs);
+    }
+  }
+
+  function getDynamicPaintConfig(el, attr, configs) {
+    if (!el.hasAttribute(attr)) return null;
+    const normalized = resolvePaintColor(el.getAttribute(attr), el);
+    return normalized ? configs.find((item) => item.hex === normalized.hex) || null : null;
+  }
+
+  function bindPaintAttribute(el, attr, config) {
+    el.removeAttribute(attr);
+    el.setAttributeNS(HMI_BIND_NS, `hmi-bind:${attr}`, `{{Converter.RGBA(ParamProps.${config.propertyName})}}`);
+  }
+
+  function isPaintableForAttribute(el, attr) {
+    if (!PAINTABLE_TAGS.has(el.localName)) return false;
+    if (attr === 'stop-color') return el.localName === 'stop';
+    if (attr === 'flood-color') return el.localName === 'feFlood';
+    if (attr === 'lighting-color') return ['feDiffuseLighting', 'feSpecularLighting'].includes(el.localName);
+    return ['fill', 'stroke'].includes(attr);
   }
 
   function generatePreviewSvg(configs, isValid) {
