@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVG-to-Siemens Dynamic SVG Generator</title>
+  <meta name="description" content="Lokaler Frontend-Konverter für Siemens WinCC Unified Dynamic SVG (.svghmi) Dateien.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">WinCC Unified · TIA Portal V20+</p>
+      <h1>SVG-to-Siemens Dynamic SVG Generator</h1>
+      <p>Importiere Standard-SVGs lokal im Browser, dynamisiere Farben und exportiere Siemens-kompatible <code>.svghmi</code>-Dateien.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel import-panel" aria-labelledby="import-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="import-title">1. SVG importieren</h2>
+          <p>Keine Datei wird hochgeladen. Die Verarbeitung läuft vollständig im Browser.</p>
+        </div>
+        <button id="resetButton" class="secondary" type="button">Zurücksetzen</button>
+      </div>
+      <label id="dropZone" class="drop-zone" for="fileInput">
+        <input id="fileInput" type="file" accept=".svg,image/svg+xml">
+        <span class="drop-icon">⇪</span>
+        <strong>SVG-Datei auswählen oder hier ablegen</strong>
+        <small>Unterstützt <code>.svg</code> mit lokalen Geometrien, Gruppen, Pfaden und Farben.</small>
+      </label>
+      <div id="fileMeta" class="file-meta" aria-live="polite"></div>
+      <div id="statusMessage" class="status" role="status" aria-live="polite">Noch keine Datei geladen.</div>
+    </section>
+
+    <section class="grid two-columns">
+      <article class="panel" aria-labelledby="warnings-title">
+        <h2 id="warnings-title">2. Prüfbericht</h2>
+        <div id="warnings" class="notice-list empty">Nach dem Import erscheinen hier Hinweise zu SVG-Features, die für WinCC Unified problematisch sein können.</div>
+      </article>
+
+      <article class="panel" aria-labelledby="export-title">
+        <h2 id="export-title">6. Export</h2>
+        <div class="button-row">
+          <button id="downloadButton" type="button" disabled>.svghmi herunterladen</button>
+          <button id="copyButton" class="secondary" type="button" disabled>Code kopieren</button>
+          <button id="downloadCleanButton" class="secondary" type="button" disabled>Bereinigtes SVG</button>
+        </div>
+        <p class="help-text">Der Export erzeugt <code>hmi:self</code>, <code>hmi:paramDef</code> und <code>hmi-bind:*</code>-Attribute für dynamisierte Farben.</p>
+      </article>
+    </section>
+
+    <section class="panel" aria-labelledby="colors-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="colors-title">3. Farben erkennen und dynamisieren</h2>
+          <p>Wähle pro erkannter Farbe, ob sie statisch bleiben oder als <code>HmiColor</code>-Property exportiert werden soll.</p>
+        </div>
+      </div>
+      <div id="validationSummary" class="validation-summary" hidden></div>
+      <div id="colorList" class="color-list empty">Noch keine Farben erkannt.</div>
+    </section>
+
+    <section class="panel" aria-labelledby="test-title">
+      <h2 id="test-title">4. Live-Testvorschau</h2>
+      <div id="propertyControls" class="property-controls empty">Dynamisierte Properties erscheinen hier als Color-Picker.</div>
+    </section>
+
+    <section class="preview-grid" aria-label="SVG Vorschauen">
+      <article class="panel preview-card">
+        <h2>Original-Vorschau</h2>
+        <div id="originalPreview" class="preview-box empty">Kein SVG geladen.</div>
+      </article>
+      <article class="panel preview-card">
+        <h2>Test-/Export-Vorschau</h2>
+        <div id="dynamicPreview" class="preview-box empty">Noch keine dynamisierte Vorschau.</div>
+      </article>
+    </section>
+
+    <section class="panel" aria-labelledby="code-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="code-title">5. Erzeugter SVGHMI-Code</h2>
+          <p>Der Code wird live aktualisiert, sobald Farben dynamisiert oder Properties umbenannt werden.</p>
+        </div>
+      </div>
+      <textarea id="codeOutput" spellcheck="false" readonly placeholder="Hier erscheint der Siemens Dynamic SVG Exportcode."></textarea>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Statische Frontend-App · FileReader · DOMParser · XMLSerializer · Blob · Clipboard API</p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
