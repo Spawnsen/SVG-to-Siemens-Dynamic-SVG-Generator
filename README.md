@@ -89,15 +89,14 @@ Der Export erzeugt eine Siemens-HMI-SVG-Grundstruktur mit:
 - Siemens DOCTYPE für TIA-HMI SVG
 - `xmlns:hmi="http://svg.siemens.com/hmi/"`
 - `xmlns:hmi-bind="http://svg.siemens.com/hmi/bind/"`
-- `name`-Attribut am `<svg>`-Root-Element, damit TIA Portal einen gültigen SVG-Namen analysieren kann
-- `hmi:self`
+- `hmi:self` mit `type`, `displayName`, `name`, `version` und `performanceClass`, damit TIA Portal einen gültigen SVG-Namen analysieren kann
 - je dynamischer Farbe ein `hmi:paramDef` mit `type="HmiColor"`
 - `hmi-bind:*`-Attributen für dynamisierte SVG-Farben
 
 Beispielprinzip:
 
 ```xml
-<hmi:self>
+<hmi:self type="widget" displayName="Example" name="extended.Example" version="1.0.0" performanceClass="L">
   <hmi:paramDef name="BodyColor" type="HmiColor" default="0xFF009999" />
 </hmi:self>
 <rect hmi-bind:fill="{{Converter.RGBA(ParamProps.BodyColor)}}" />

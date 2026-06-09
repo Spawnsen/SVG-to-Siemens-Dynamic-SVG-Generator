@@ -337,6 +337,7 @@
 
     svg.querySelector('hmi\\:self')?.remove();
     const self = doc.createElementNS(HMI_NS, 'hmi:self');
+    setHmiSelfAttributes(self, buildSvgName(svg.getAttribute('name')));
     for (const config of configs) {
       const param = doc.createElementNS(HMI_NS, 'hmi:paramDef');
       param.setAttribute('name', config.propertyName);
@@ -487,6 +488,13 @@
   function hexToHmiColor(hex) { return `0xFF${hex.replace('#', '').toUpperCase()}`; }
   function formatBytes(bytes) { return `${(bytes / 1024).toFixed(bytes > 1024 * 1024 ? 1 : 0)} KB`; }
   function buildExportFileName() { return `${baseFileName()}_dynamic.svghmi`; }
+  function setHmiSelfAttributes(self, svgName) {
+    self.setAttribute('type', 'widget');
+    self.setAttribute('displayName', svgName);
+    self.setAttribute('name', `extended.${svgName}`);
+    self.setAttribute('version', '1.0.0');
+    self.setAttribute('performanceClass', 'L');
+  }
   function buildSvgName(existingName) { return sanitizeSvgName(String(existingName || '').trim() || baseFileName()); }
   function sanitizeSvgName(value) {
     const cleaned = String(value || '').replace(/\.svg$/i, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
